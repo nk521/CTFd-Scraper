@@ -51,24 +51,28 @@ class CTFDScrapper():
             directory_name, directory_name + '-' + '-'.join(str(datetime.datetime.now()).split()))
         self.suppress = suppress
 
-        if os.path.isdir(directory_name):
-            if os.path.isfile(directory_name):
-                raise Exception(directory_name + " is not a valid directory")
-        else:
-            os.mkdir(directory_name)
-
         json_challs = self.apiGet('/challenges').text
         challenges = json.loads(json_challs)
         exported = {}
-        
+
+        if challenges.get("data"):
+            if os.path.isdir(directory_name):
+                if os.path.isfile(directory_name):
+                    raise Exception(directory_name +
+                                    " is not a valid directory")
+            else:
+                os.mkdir(directory_name)
+        else:
+            return
+
         for chall in challenges['data']:
             if not self.suppress:
                 print("Downloading " + chall['name'] + " - " +
                       chall['category']+" ["+str(chall['value'])+" pts]")
-            
+
             if chall['category'] not in exported:
                 exported[chall['category']] = {}
-            
+
             if os.path.isdir(directory_name + "/" + chall['category']) == False:
                 os.mkdir(directory_name + "/" + chall['category'])
 
@@ -77,24 +81,29 @@ class CTFDScrapper():
             chall_dir = directory_name + "/" + \
                 chall['category'] + "/" + chall['name'] + \
                 " ["+str(chall['value'])+" pts]"
+
             os.mkdir(chall_dir)
+
             output = open(chall_dir + "/" + "README.md", 'w')
             output.write("Description:\n")
             output.write(chall_info['description'] + "\nHints:\n")
-            
+
             for hint in chall_info:
                 if "content" in hint:
                     output.write(hint.content + "\n")
+
             output.close()
             file_dir = chall_dir + "/" + "files"
-            
+
             if len(chall_info['files']) > 0:
                 os.mkdir(file_dir)
 
             for file_url in chall_info['files']:
                 file_name = file_url.split("?token")[0].split("/")[-1]
+
                 if not self.suppress:
                     print("     Downloading " + file_name)
+
                 file_data = self.get(file_url).content
                 file = open(file_dir + "/" + file_name, 'wb')
                 file.write(file_data)
@@ -142,7 +151,7 @@ while True:
     try:
         try:
             ctfds.login(username, password)
-        
+
         except Exception as e:
             print(e)
             exit()
